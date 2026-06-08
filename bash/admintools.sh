@@ -27,22 +27,26 @@ show_menu() {
 }
 
 get_user_logins() {
-    echo -e "\n${YELLOW}--- Usuarios y Último Ingreso ---${NC}"
-    if command -v lastlog >/dev/null 2>&1; then
-        # Filtramos para mostrar solo usuarios que han iniciado sesión o excluir sistémicos sin login
-        lastlog | awk 'NR==1 || ($4 != "**Never" && $4 != "logged")'
-    else
-        echo -e "${GRAY}lastlog no disponible. Usando comando 'last' para los más recientes:${NC}"
-        last -n 10
-    fi
+    echo -e "\n${YELLOW}--- Usuarios del Sistema y Último Ingreso ---${NC}"
+    printf "%-20s %s\n" "USUARIO" "ÚLTIMO INGRESO"
+    echo "------------------------------------------------------------"
+    while IFS=: read -r usuario _ uid _ _ _ _; do
+        if [ "$uid" -ge 1000 ] || [ "$uid" -eq 0 ]; then
+            ultimo=$(lastlog -u "$usuario" | tail -n 1 | awk '{$1=""; print $0}')
+            printf "%-20s %s\n" "$usuario" "$ultimo"
+        fi
+    done < /etc/passwd
     read -p "$(echo -e "\nPresione Enter para continuar...")"
 }
 
 get_disk_space() {
     echo -e "\n${YELLOW}--- Filesystems / Discos (Valores en Bytes) ---${NC}"
-    # df -B1 fuerza la salida en bytes. Se muestran columnas específicas.
-    printf "%-20s %-15s %-15s %s\n" "Filesystem" "Tamaño(B)" "Libre(B)" "Montado"
-    df -B1 --output=source,size,avail,target | tail -n +2 | awk '{printf "%-20s %-15s %-15s %s\n", $1, $2, $3, $4}'
+    printf "%-25s %-15s %-15s %-15s %-10s %s\n" "Filesystem" "Tamaño(B)" "Usado(B)" "Libre(B)" "Uso%" "Montado"
+    echo "---------------------------------------------------------------------------------------------------"
+    df -B1 --output=source,size,used,avail,pcent,target -x tmpfs -x devtmpfs -x squashfs 2>/dev/null | tail -n +2 | \
+    while read -r fs tamano usado libre porcentaje montado; do
+        printf "%-25s %-15s %-15s %-15s %-10s %s\n" "$fs" "$tamano" "$usado" "$libre" "$porcentaje" "$montado"
+    done
     read -p "$(echo -e "\nPresione Enter para continuar...")"
 }
 
@@ -50,8 +54,10 @@ get_top_files() {
     read -p "Ingrese el punto de montaje o directorio (ej. /): " dir
     if [ -d "$dir" ]; then
         echo -e "\n${YELLOW}Buscando los 10 archivos más grandes en '$dir'...${NC}"
+        echo ""
         echo -e "${GRAY}(Esto puede tardar dependiendo del tamaño del disco)${NC}"
-        # find busca archivos, du obtiene tamaño en bytes, sort ordena numéricamente descendente
+        printf "%-12s  %s\n" "TAMAÑO" "ARCHIVO"
+        echo "-----------------------------------------------------------"
         find "$dir" -type f -exec du -b {} + 2>/dev/null | sort -rn | head -n 10 | awk '{printf "%-15s %s\n", $1, $2}'
     else
         echo -e "${RED}Error: El directorio '$dir' no existe o no es accesible.${NC}"
@@ -65,9 +71,8 @@ get_memory_stats() {
     # Obtener datos de 'free -b' (bytes)
     mem_data=$(free -b | grep Mem)
     mem_total=$(echo $mem_data | awk '{print $2}')
-    mem_free=$(echo $mem_data | awk '{print $4}')
+    mem_free=$(echo $mem_data | awk '{print $7}')
     
-    # Evitar división por cero
     if [ "$mem_total" -gt 0 ]; then
         mem_free_pct=$(awk "BEGIN {printf \"%.2f\", ($mem_free/$mem_total)*100}")
     else
@@ -104,8 +109,7 @@ invoke_backup() {
         
         if mkdir -p "$backup_path" 2>/dev/null; then
             echo -e "\n${GRAY}Copiando archivos...${NC}"
-            # Copiar archivos (cp -r)
-            cp -r "$src"/* "$backup_path" 2>/dev/null
+            cp -a "$src/." "$backup_path/" 2>/dev/null
             
             echo -e "${GRAY}Generando catálogo...${NC}"
             catalog_file="$backup_path/catalogo_archivos.txt"
@@ -113,8 +117,8 @@ invoke_backup() {
             echo "------------------------------------------" >> "$catalog_file"
             echo "ARCHIVO | FECHA MODIFICACIÓN | TRAYECTORIA COMPLETA" >> "$catalog_file"
             
-            # find para listar archivos con su fecha y ruta completa
-            find "$backup_path" -type f -printf "%f | %TY-%Tm-%Td %TH:%TM:%TS | %p\n" >> "$catalog_file"
+            # Se genera el catálogo desde el ORIGEN para registrar las fechas reales
+            find "$src" -type f -printf "%f | %TY-%Tm-%Td %TH:%TM:%TS | %p\n" >> "$catalog_file"
             
             echo -e "${GREEN}Backup finalizado exitosamente en: $backup_path${NC}"
         else
