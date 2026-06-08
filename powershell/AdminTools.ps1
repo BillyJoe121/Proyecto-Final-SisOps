@@ -11,17 +11,17 @@ function Show-Menu {
     Write-Host "==========================================" -ForegroundColor Cyan
     Write-Host "   DATA CENTER ADMIN TOOLS (PowerShell)   " -ForegroundColor White
     Write-Host "==========================================" -ForegroundColor Cyan
-    Write-Host " 1. Listar usuarios y su último ingreso"
-    Write-Host " 2. Ver filesystems/discos (Tamaño y Libre)"
-    Write-Host " 3. Listar 10 archivos más grandes en un disco"
-    Write-Host " 4. Estadísticas de Memoria y Swap"
-    Write-Host " 5. Realizar Backup a USB (con Catálogo)"
+    Write-Host " 1. Listar usuarios y su ultimo ingreso"
+    Write-Host " 2. Ver filesystems/discos (Tamano y Libre)"
+    Write-Host " 3. Listar 10 archivos mas grandes en un disco"
+    Write-Host " 4. Estadisticas de Memoria y Swap"
+    Write-Host " 5. Realizar Backup a USB (con Catalogo)"
     Write-Host " Q. Salir"
     Write-Host "==========================================" -ForegroundColor Cyan
 }
 
 function Get-UserLogins {
-    Write-Host "`n--- Usuarios y Último Ingreso ---" -ForegroundColor Yellow
+    Write-Host "`n--- Usuarios y Ultimo Ingreso ---" -ForegroundColor Yellow
     try {
         # Solo cuentas habilitadas (equivalente a filtrar usuarios reales en Linux)
         Get-LocalUser | Where-Object { $_.Enabled } |
@@ -47,7 +47,7 @@ function Get-DiskSpace {
 function Get-TopFiles {
     $path = Read-Host "`nEspecifique la letra del disco o ruta completa (ej. C:\)"
     if (Test-Path $path) {
-        Write-Host "`nEscaneando... Esto puede demorar varios minutos según el tamaño del disco." -ForegroundColor Gray
+        Write-Host "`nEscaneando... Esto puede demorar varios minutos segun el tamano del disco." -ForegroundColor Gray
         try {
             $files = Get-ChildItem -Path $path -File -Recurse -Force -ErrorAction SilentlyContinue |
                      Sort-Object Length -Descending |
@@ -59,16 +59,16 @@ function Get-TopFiles {
                 Write-Host "No se encontraron archivos en la ruta especificada." -ForegroundColor Cyan
             }
         } catch {
-            Write-Host "Ocurrió un error durante el escaneo: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "Ocurrio un error durante el escaneo: $($_.Exception.Message)" -ForegroundColor Red
         }
     } else {
-        Write-Host "La ruta '$path' no es válida o no existe." -ForegroundColor Red
+        Write-Host "La ruta '$path' no es valida o no existe." -ForegroundColor Red
     }
     Read-Host "`nPresione Enter para continuar..."
 }
 
 function Get-MemoryStats {
-    Write-Host "`n--- Estadísticas de Memoria y Swap ---" -ForegroundColor Yellow
+    Write-Host "`n--- Estadisticas de Memoria y Swap ---" -ForegroundColor Yellow
     $os = Get-CimInstance Win32_OperatingSystem
 
     $totalMem = [int64]$os.TotalVisibleMemorySize * 1024
@@ -113,7 +113,7 @@ function Invoke-Backup {
             Write-Host "`nCopiando archivos (incluye ocultos)... por favor espere." -ForegroundColor Gray
             Copy-Item -Path "$source\*" -Destination $backupDir -Recurse -Force -ErrorAction SilentlyContinue
 
-            Write-Host "Generando catálogo de archivos..." -ForegroundColor Gray
+            Write-Host "Generando catalogo de archivos..." -ForegroundColor Gray
             $catalogoPath = Join-Path $backupDir "catalogo_backup.txt"
             $header = "NOMBRE DEL ARCHIVO | FECHA ULTIMA MODIFICACION | RUTA COMPLETA"
             $separator = "=" * 80
@@ -126,12 +126,12 @@ function Invoke-Backup {
                 Out-File $catalogoPath -Append
 
             Write-Host "`nBackup completado exitosamente en: $backupDir" -ForegroundColor Green
-            Write-Host "Catálogo creado en: $catalogoPath" -ForegroundColor Green
+            Write-Host "Catalogo creado en: $catalogoPath" -ForegroundColor Green
         } catch {
             Write-Host "Error durante el backup: $($_.Exception.Message)" -ForegroundColor Red
         }
     } else {
-        Write-Host "Rutas de origen o destino no válidas." -ForegroundColor Red
+        Write-Host "Rutas de origen o destino no validas." -ForegroundColor Red
     }
     Read-Host "`nPresione Enter para continuar..."
 }
@@ -144,7 +144,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 
 do {
     Show-Menu
-    $choice = Read-Host "`nOpción"
+    $choice = Read-Host "`nOpcion"
     switch ($choice) {
         "1" { Get-UserLogins }
         "2" { Get-DiskSpace }
@@ -152,6 +152,6 @@ do {
         "4" { Get-MemoryStats }
         "5" { Invoke-Backup }
         "Q" { break }
-        default { Write-Host "Opción no reconocida." -ForegroundColor Red; Start-Sleep -Seconds 1 }
+        default { Write-Host "Opcion no reconocida." -ForegroundColor Red; Start-Sleep -Seconds 1 }
     }
 } while ($choice -ne "Q")
